@@ -70,6 +70,7 @@ int main()
     std::string clientCheck ="client";
     float posXplayer1=0;
     float posYplayer1=0;
+    int oneMessage=0;
     int currentAmountOfPlayers=2;
     char buffer[2000];
 
@@ -80,10 +81,10 @@ int main()
     std::cin >> connectionType;
     unsigned short port;
 
-        std::cout << "set port number: ";
+        /*std::cout << "set port number: ";
         std::cin >> port;
 
-        socket.bind(port);
+        socket.bind(port);*/
 
     if(connectionType==serverCheckShort || connectionType==serverCheck)
     {
@@ -105,12 +106,12 @@ int main()
         socket.bind(2001);
         TcpSocket.connect(severIP,2000);
         text+="client";
+        TcpSocket.send(cIP.c_str(), cIP.length()+1);
     }
 
 
-    TcpSocket.send(cIP.c_str(), cIP.length()+1);
-    TcpSocket.receive(buffer, sizeof(buffer), received);
-    std::cout<<buffer<<"\n";
+
+
 
     std::vector<player> player{add_new_player(currentAmountOfPlayers)};
 
@@ -135,6 +136,14 @@ int main()
                 update=true;
            if(Event.type == sf::Event::LostFocus)
                update = false;
+        }
+        if(connectionType==serverCheckShort || connectionType==serverCheck)
+        {
+            if(oneMessage==0 &&TcpSocket.receive(buffer, sizeof(buffer), received)==sf::Socket::Done)
+            {
+             std::cout<<buffer<<"\n";
+             oneMessage+=1;
+            }
         }
         prevPosition = sf::Vector2f(player[0].getPosX(), player[0].getPosY());
         if(update)
