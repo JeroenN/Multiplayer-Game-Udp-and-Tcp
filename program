@@ -73,6 +73,9 @@ int main()
     int currentAmountOfPlayers=2;
     char buffer[2000];
 
+    sf::TcpListener listener;
+    listener.setBlocking(false);
+
     std::size_t received;
     std::string text = "Connected to: ";
 
@@ -88,10 +91,6 @@ int main()
     if(connectionType==serverCheckShort || connectionType==serverCheck)
     {
         server=true;
-        sf::TcpListener listener;
-        //socket.bind(2000);
-        listener.listen(2000);
-        listener.accept(TcpSocket);
         text += "server";
     }
     if(connectionType==clientCheckShort || connectionType==clientCheck)
@@ -107,7 +106,7 @@ int main()
         TcpSocket.send(cIP.c_str(), cIP.length()+1);
 
     }
-     TcpSocket.setBlocking(false);
+
     std::vector<player> player{add_new_player(currentAmountOfPlayers)};
 
     sf::Vector2f prevPosition;
@@ -120,6 +119,7 @@ int main()
 
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(true);
+    TcpSocket.setBlocking(false);
     socket.setBlocking(false);
     bool  update =false;
     while(window.isOpen())
@@ -135,13 +135,10 @@ int main()
 
         if(connectionType==serverCheckShort || connectionType==serverCheck)
         {
-                         std::cout<<"2 \n";
-            if(TcpSocket.receive(buffer, sizeof(buffer), received)!=sf::Socket::Done)
-            {
-             std::cout<<"1 \n";
 
-            }
-            else
+            listener.listen(port);
+            listener.accept(TcpSocket);
+            if(TcpSocket.receive(buffer, sizeof(buffer), received)==sf::Socket::Done)
             {
                 std::cout<<buffer<<"\n";
             }
