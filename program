@@ -60,6 +60,8 @@ int main()
     sf::IpAddress clientIP=sf::IpAddress::getLocalAddress();;
     sf::IpAddress severIP=sf::IpAddress::getLocalAddress();
     std::string cIP=clientIP.sf::IpAddress::toString();
+    sf::IpAddress clientIpReceived;
+    sf::Packet cIPandPortPacket;
     bool server =false;
     bool client =false;
     sf::UdpSocket socket;
@@ -70,8 +72,8 @@ int main()
     std::string clientCheck ="client";
     float posXplayer1=0;
     float posYplayer1=0;
-    int currentAmountOfPlayers=2;
-    char buffer[2000];
+    int currentAmountOfPlayers=1;
+    std::vector<unsigned short> vectorClientPorts;
 
     sf::TcpListener listener;
     listener.setBlocking(false);
@@ -82,29 +84,35 @@ int main()
     std::cout <<"Enter (server) for server, Enter (client) for client: \n";
     std::cin >> connectionType;
     unsigned short port;
+    unsigned short clientPort;
 
-        std::cout << "set port number: ";
-        std::cin >> port;
+        //std::cout << "set port number: ";
+//        std::cin >> port;
 
-        socket.bind(port);
+        //socket.bind(port);
 
     if(connectionType==serverCheckShort || connectionType==serverCheck)
     {
+        port =2000;
+        socket.bind(port);
         server=true;
         text += "server";
+        listener.listen(port);
     }
     if(connectionType==clientCheckShort || connectionType==clientCheck)
     {
         client=true;
-        std::string sIP="192.168.178.15";
-        std::cout << "Enter server ip: ";
+        std::string sIP="192.168.10.182";
+        //std::cout << "Enter server ip: ";
         //std::cin>> sIP;
         severIP=sIP;
+        std::cout << "set port number: ";
+        std::cin >> clientPort;
 
-        //socket.bind(2001);
+        socket.bind(clientPort);
         TcpSocket.connect(severIP,2000);
-        TcpSocket.send(cIP.c_str(), cIP.length()+1);
-
+        cIPandPortPacket<<cIP<<clientPort;
+        TcpSocket.send(cIPandPortPacket);
     }
 
     std::vector<player> player{add_new_player(currentAmountOfPlayers)};
@@ -135,12 +143,18 @@ int main()
 
         if(connectionType==serverCheckShort || connectionType==serverCheck)
         {
-
-            listener.listen(port);
             listener.accept(TcpSocket);
-            if(TcpSocket.receive(buffer, sizeof(buffer), received)==sf::Socket::Done)
+            if(TcpSocket.receive(cIPandPortPacket)==sf::Socket::Done)
             {
-                std::cout<<buffer<<"\n";
+                if(cIPandPortPacket>>cIP>>clientPort)
+                {
+                currentAmountOfPlayers+=1;
+                std::cout<<cIP<<"\n";
+                clientIpReceived=cIP;
+                //port = TcpSocket.sf::TcpSocket::getRemotePort();
+                std::cout<<clientPort<<"\n";
+                vectorClientPorts.push_back(clientPort);
+                }
             }
         }
         prevPosition = sf::Vector2f(player[0].getPosX(), player[0].getPosY());
@@ -171,14 +185,16 @@ int main()
                 player[0].setPlayerPosition(posXplayer1, posYplayer1);
             }
         }
-
+       for(int n : vectorClientPorts) {
+        std::cout<<n;
+       }
         sf::Packet posPacket;
         if(server==true)
         {
             if(prevPosition != sf::Vector2f(player[0].getPosX(), player[0].getPosY()))
             {
-                sf::IpAddress recipient = clientIP;
-                unsigned short clientPort = 2001;
+                sf::IpAddress recipient = clientIpReceived;
+                //unsigned short clientPort = port;
                 posPacket<<player[0].getPosX() <<player[0].getPosY();
                 if (socket.send(posPacket, recipient, clientPort) != sf::Socket::Done)
                 {
