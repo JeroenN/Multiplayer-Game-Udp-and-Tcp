@@ -44,7 +44,7 @@ public:
     }
 };
 
-std::vector<player> add_new_player(int amount_players) noexcept
+std::vector<player> add_new_player(int& amount_players) noexcept
 {
     std::vector<player> newPlayer;
     for(int i=0; i!= amount_players; ++i)
@@ -57,6 +57,7 @@ std::vector<player> add_new_player(int amount_players) noexcept
 int main()
 {
     sf::TcpSocket TcpSocket;
+    sf::TcpSocket TcpSendPlayerNumber;
     sf::IpAddress clientIP=sf::IpAddress::getLocalAddress();;
     sf::IpAddress severIP=sf::IpAddress::getLocalAddress();
     std::string cIP=clientIP.sf::IpAddress::toString();
@@ -72,13 +73,16 @@ int main()
     std::string clientCheck ="client";
     float posXplayer1=0;
     float posYplayer1=0;
-    int currentAmountOfPlayers=1;
+    int currentAmountOfPlayers=2;
+    int playerNumber=0;
     std::vector<unsigned short> vectorClientPorts;
+    std::vector<int> vectorPlayers;
+    sf::Packet playerAssignNumber;
+    int counter=0;
 
     sf::TcpListener listener;
     listener.setBlocking(false);
 
-    std::size_t received;
     std::string text = "Connected to: ";
 
     std::cout <<"Enter (server) for server, Enter (client) for client: \n";
@@ -98,11 +102,13 @@ int main()
         server=true;
         text += "server";
         listener.listen(port);
+        //playerNumber=1;
+        vectorPlayers.push_back(playerNumber);
     }
     if(connectionType==clientCheckShort || connectionType==clientCheck)
     {
         client=true;
-        std::string sIP="192.168.10.182";
+        std::string sIP="192.168.10.127";
         //std::cout << "Enter server ip: ";
         //std::cin>> sIP;
         severIP=sIP;
@@ -115,19 +121,18 @@ int main()
         TcpSocket.send(cIPandPortPacket);
     }
 
-    std::vector<player> player{add_new_player(currentAmountOfPlayers)};
-
     sf::Vector2f prevPosition;
     sf::Vector2f changingPosition;
     sf::RenderWindow window(
        sf::VideoMode(500, 500),
        "multiplayer",
        sf::Style::Titlebar | sf::Style::Close);
-
+    std::vector<player> player{add_new_player(currentAmountOfPlayers)};
 
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(true);
     TcpSocket.setBlocking(false);
+    TcpSendPlayerNumber.setBlocking(false);
     socket.setBlocking(false);
     bool  update =false;
     while(window.isOpen())
@@ -148,15 +153,27 @@ int main()
             {
                 if(cIPandPortPacket>>cIP>>clientPort)
                 {
-                currentAmountOfPlayers+=1;
-                std::cout<<cIP<<"\n";
-                clientIpReceived=cIP;
-                //port = TcpSocket.sf::TcpSocket::getRemotePort();
-                std::cout<<clientPort<<"\n";
-                vectorClientPorts.push_back(clientPort);
+                    //std::cout<<counter;
+                    currentAmountOfPlayers+=1;
+                    playerNumber+=1;
+                    std::cout<<cIP<<"\n";
+                    clientIpReceived=cIP;
+                    //port = TcpSocket.sf::TcpSocket::getRemotePort();
+                    std::cout<<clientPort<<"\n";
+                    vectorClientPorts.push_back(clientPort);
+                    vectorPlayers.push_back(playerNumber);
+                    /*if (socket.send(posPacket, recipient, vectorClientPorts.size()) != sf::Socket::Done)
+                    {
+                        //std::cout<<"whoops... some data wasn't sent";
+                    }*/
+                    playerAssignNumber<<playerNumber;
+                    TcpSendPlayerNumber.connect(cIP,clientPort);
+                    TcpSendPlayerNumber.send(playerAssignNumber);
                 }
             }
         }
+
+
         prevPosition = sf::Vector2f(player[0].getPosX(), player[0].getPosY());
         if(update)
         {
@@ -185,9 +202,10 @@ int main()
                 player[0].setPlayerPosition(posXplayer1, posYplayer1);
             }
         }
-       for(int n : vectorClientPorts) {
+       /*for(int n : vectorClientPorts) {
         std::cout<<n;
        }
+       */
         sf::Packet posPacket;
         if(server==true)
         {
@@ -196,20 +214,24 @@ int main()
                 sf::IpAddress recipient = clientIpReceived;
                 //unsigned short clientPort = port;
                 posPacket<<player[0].getPosX() <<player[0].getPosY();
-                if (socket.send(posPacket, recipient, clientPort) != sf::Socket::Done)
+                for(int i=0; i<vectorClientPorts.size(); ++i)
                 {
-                    //std::cout<<"whoops... some data wasn't sent";
+                    if (socket.send(posPacket, recipient, vectorClientPorts[i]) != sf::Socket::Done)
+                    {
+                        //std::cout<<"whoops... some data wasn't sent";
+                    }
                 }
 
             }
         }
         if(client==true)
         {
+            TcpSendPlayerNumber.receive(playerAssignNumber);
             if(prevPosition != sf::Vector2f(player[0].getPosX(), player[0].getPosY()))
             {
                 sf::IpAddress recipient = severIP;
                 unsigned short serverPort = 2000;
-                posPacket<<player[0].getPosX() <<player[0].getPosY();
+                posPacket<<player[0].getPosX() <<player[0].getPosY()<<playerNumber;
                 if (socket.send(posPacket, recipient, serverPort) != sf::Socket::Done)
                 {
                     //std::cout<<"whoops... some data wasn't sent";
@@ -223,8 +245,8 @@ int main()
         {
             //std::cout<<"whoops... some data wasn't received";
         }
-        if(posPacket>>changingPosition.x>>changingPosition.y)
-        player[1].setPlayerPosition(changingPosition.x, changingPosition.y);
+        if(posPacket>>changingPosition.x>>changingPosition.y<<playerNumber)
+        player[playerNumber].setPlayerPosition(changingPosition.x, changingPosition.y);
 
         window.clear();
         for(int i=0; i<static_cast<int>(player.size()); ++i)
