@@ -58,7 +58,7 @@ int main()
 {
     sf::TcpSocket TcpSocket;
     sf::TcpSocket TcpSendPlayerNumber;
-    sf::IpAddress clientIP=sf::IpAddress::getLocalAddress();;
+    sf::IpAddress clientIP=sf::IpAddress::getLocalAddress();
     sf::IpAddress severIP=sf::IpAddress::getLocalAddress();
     std::string cIP=clientIP.sf::IpAddress::toString();
     sf::IpAddress clientIpReceived;
@@ -74,14 +74,18 @@ int main()
     float posXplayer1=0;
     float posYplayer1=0;
     int currentAmountOfPlayers=2;
-    int playerNumber=0;
+    sf::Uint16 playerNumber=0;
     std::vector<unsigned short> vectorClientPorts;
     std::vector<int> vectorPlayers;
     sf::Packet playerAssignNumber;
+    sf::Uint16 playerNumberClient=0;
     int counter=0;
 
     sf::TcpListener listener;
     listener.setBlocking(false);
+    
+    sf::TcpListener listenerPlayerNumber;
+    listenerPlayerNumber.setBlocking(false);
 
     std::string text = "Connected to: ";
 
@@ -108,13 +112,14 @@ int main()
     if(connectionType==clientCheckShort || connectionType==clientCheck)
     {
         client=true;
-        std::string sIP="192.168.10.127";
+        std::string sIP="10.200.233.115"; //IP hardcoded, needs to change
         //std::cout << "Enter server ip: ";
         //std::cin>> sIP;
         severIP=sIP;
         std::cout << "set port number: ";
         std::cin >> clientPort;
 
+        listenerPlayerNumber.listen(clientPort);
         socket.bind(clientPort);
         TcpSocket.connect(severIP,2000);
         cIPandPortPacket<<cIP<<clientPort;
@@ -153,23 +158,21 @@ int main()
             {
                 if(cIPandPortPacket>>cIP>>clientPort)
                 {
-                    //std::cout<<counter;
                     currentAmountOfPlayers+=1;
-                    playerNumber+=1;
-                    std::cout<<playerNumber<< "\n";
                     std::cout<<cIP<<"\n";
                     clientIpReceived=cIP;
-                    //port = TcpSocket.sf::TcpSocket::getRemotePort();
                     std::cout<<clientPort<<"\n";
                     vectorClientPorts.push_back(clientPort);
-                    //vectorPlayers.push_back(playerNumber);
-                    /*if (socket.send(posPacket, recipient, vectorClientPorts.size()) != sf::Socket::Done)
-                    {
-                        //std::cout<<"whoops... some data wasn't sent";
-                    }*/
+                    playerNumber+=1;
+                    std::cout<<playerNumber<< "\n";
                     playerAssignNumber<<playerNumber;
-                    TcpSendPlayerNumber.connect(cIP,clientPort);
-                    TcpSendPlayerNumber.send(playerAssignNumber);
+                    for(int i=0; i<vectorClientPorts.size(); ++i)
+                    {
+                        counter++;
+                        std::cout<<"counter:"<<vectorClientPorts[i];
+                        TcpSendPlayerNumber.connect(cIP,vectorClientPorts[i]);
+                        TcpSendPlayerNumber.send(playerAssignNumber);
+                    }
                 }
             }
         }
@@ -227,9 +230,16 @@ int main()
         }
         if(client==true)
         {
-            TcpSendPlayerNumber.receive(playerAssignNumber);
-            playerAssignNumber>>playerNumber;
-            std::cout<<playerNumber<< "\n";
+            listenerPlayerNumber.accept(TcpSendPlayerNumber);
+            if(TcpSendPlayerNumber.receive(playerAssignNumber)==sf::Socket::Done)
+            {
+                std::cout<<"recieve that shit!";
+                if(playerAssignNumber>>playerNumberClient)
+                {
+
+                }
+            }
+            std::cout<<playerNumberClient<< "\n";
             if(prevPosition != sf::Vector2f(player[0].getPosX(), player[0].getPosY()))
             {
                 sf::IpAddress recipient = severIP;
